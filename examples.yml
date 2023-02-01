@@ -1,0 +1,43 @@
+# Packetbeat
+docker run -d \
+  --name=packetbeat \
+  --user=packetbeat \
+  --volume="$(pwd)/conf/packetbeat.docker.yml:/usr/share/packetbeat/packetbeat.yml:ro" \
+  --cap-add="NET_RAW" \
+  --cap-add="NET_ADMIN" \
+  --network=host \
+  docker.elastic.co/beats/packetbeat:8.6.1 \
+  --strict.perms=false -e 
+
+
+# Filebeat
+docker run -d \
+  --name=filebeat \
+  --user=root \
+  --volume="$(pwd)/conf/filebeat.docker.yml:/usr/share/filebeat/filebeat.yml:ro" \
+  --volume="/var/lib/docker/containers:/var/lib/docker/containers:ro" \
+  --volume="/var/run/docker.sock:/var/run/docker.sock:ro" \
+  docker.elastic.co/beats/filebeat:8.6.1 filebeat -e --strict.perms=false
+
+# Heartbeat
+docker run -d \
+  --name=heartbeat \
+  --user=heartbeat \
+  --volume="$(pwd)/conf/heartbeat.docker.yml:/usr/share/heartbeat/heartbeat.yml:ro" \
+  --cap-add=NET_RAW \
+  docker.elastic.co/beats/heartbeat:8.6.1 \
+  --strict.perms=false -e 
+
+# Metricbeat
+docker run -d \
+  --name=metricbeat \
+  --user=root \
+  --volume="$(pwd)/conf/metricbeat.docker.yml:/usr/share/metricbeat/metricbeat.yml:ro" \
+  --volume="/var/run/docker.sock:/var/run/docker.sock:ro" \
+  --volume="/sys/fs/cgroup:/hostfs/sys/fs/cgroup:ro" \
+  --volume="/proc:/hostfs/proc:ro" \
+  --volume="/:/hostfs:ro" \
+  docker.elastic.co/beats/metricbeat:8.6.1 metricbeat -e 
+
+# logstash
+docker run --name=logstash --net elastic -d -it -v $(pwd)/conf/pipelines/:/usr/share/logstash/pipeline/ docker.elastic.co/logstash/logstash:8.6.1

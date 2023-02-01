@@ -1,0 +1,97 @@
+############################# Heartbeat ######################################
+
+# Define a directory to load monitor definitions from. Definitions take the form
+# of individual yaml files.
+heartbeat.config.monitors:
+  # Directory + glob pattern to search for configuration files
+  path: ${path.config}/monitors.d/*.yml
+  # If enabled, heartbeat will periodically check the config.monitors path for changes
+  reload.enabled: false
+  # How often to check for changes
+  reload.period: 5s
+
+# Configure monitors
+heartbeat.monitors:
+- type: icmp # monitor type `icmp` (requires root) uses ICMP Echo Request to ping
+             # configured hosts
+
+  # ID used to uniquely identify this monitor in elasticsearch even if the config changes
+  id: my-monitor
+
+  # Human readable display name for this service in Uptime UI and elsewhere
+  name: my-icmp-monitor
+
+
+  # Configure task schedule using cron-like syntax
+  schedule: '*/5 * * * * * *' # exactly every 5 seconds like 10:00:00, 10:00:05, ...
+
+  # List of hosts to ping
+  hosts: ["localhost"]
+
+  # Configure IP protocol types to ping on if hostnames are configured.
+  # Ping all resolvable IPs if `mode` is `all`, or only one IP if `mode` is `any`.
+  ipv4: true
+  ipv6: true
+  mode: any
+
+  # Total running time per ping test.
+  timeout: 16s
+
+  # Waiting duration until another ICMP Echo Request is emitted.
+  wait: 1s
+
+
+
+- type: tcp # monitor type `tcp`. Connect via TCP and optionally verify endpoint
+            # by sending/receiving a custom payload
+  # ID used to uniquely identify this monitor in elasticsearch even if the config changes
+  id: my-monitor
+
+  # Human readable display name for this service in Uptime UI and elsewhere
+  name: my-tcp-monitor
+
+  # Enable/Disable monitor
+  #enabled: true
+
+  # Configure task schedule
+  schedule: '@every 1s' # every 5 seconds from start of beat
+
+  hosts: ["redis-19004.c299.asia-northeast1-1.gce.cloud.redislabs.com:19004"]
+
+  # Configure IP protocol types to ping on if hostnames are configured.
+  # Ping all resolvable IPs if `mode` is `all`, or only one IP if `mode` is `any`.
+  ipv4: true
+  ipv6: true
+  mode: any
+
+  # List of ports to ping if host does not contain a port number
+- type: http # monitor type `http`. Connect via HTTP an optionally verify response
+  # ID used to uniquely identify this monitor in elasticsearch even if the config changes
+  id: my-http-monitor
+
+  # Human readable display name for this service in Uptime UI and elsewhere
+  name: My Monitor
+
+  # Enable/Disable monitor
+  #enabled: true
+
+  # Configure task schedule
+  schedule: '@every 5s' # every 5 seconds from start of beat
+
+  # Configure URLs to ping
+  urls: ["https://redis.com"]
+
+  # Configure IP protocol types to ping on if hostnames are configured.
+  # Ping all resolvable IPs if `mode` is `all`, or only one IP if `mode` is `any`.
+  ipv4: true
+  ipv6: true
+  mode: any
+
+# ---------------------------- Redis Output ----------------------------
+output.redis:
+  hosts: ["redis-19004.c299.asia-northeast1-1.gce.cloud.redislabs.com:19004"]
+  user: "default"
+  password: "B9NelJhy35TDqihDp9YeUq1xl6srVYZB"
+  key: "heartbeat"
+  db: 0
+  timeout: 5
