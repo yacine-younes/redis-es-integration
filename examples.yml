@@ -9,7 +9,6 @@ docker run -d \
   docker.elastic.co/beats/packetbeat:8.6.1 \
   --strict.perms=false -e 
 
-
 # Filebeat
 docker run -d \
   --name=filebeat \

@@ -1,11 +1,3 @@
-output.redis:
-  hosts: ["redis-19004.c299.asia-northeast1-1.gce.cloud.redislabs.com:19004"]
-  user: "default"
-  password: "B9NelJhy35TDqihDp9YeUq1xl6srVYZB"
-  key: "metricbeat"
-  #db: 0
-  timeout: 5
-
 metricbeat.modules:
 - module: system
   metricsets:
@@ -34,3 +26,11 @@ metricbeat.modules:
   # Configure the metric types that are included by these metricsets.
   cpu.metrics:  ["percentages","normalized_percentages"]  # The other available option is ticks.
   core.metrics: ["percentages"]  # The other available option is ticks.
+
+output.redis:
+  hosts: ["redis-19004.c299.asia-northeast1-1.gce.cloud.redislabs.com:19004"]
+  user: "default"
+  password: "B9NelJhy35TDqihDp9YeUq1xl6srVYZB"
+  key: "metricbeat"
+  #db: 0
+  timeout: 5
