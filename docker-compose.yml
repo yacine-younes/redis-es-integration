@@ -1,0 +1,203 @@
+services:
+
+  # Elasticsearch Docker Images: https://www.docker.elastic.co/
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.6.2
+    container_name: demo-es
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      - xpack.security.enabled=false
+      - discovery.type=single-node
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    cap_add:
+      - IPC_LOCK
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    ports:
+      - 9200:9200
+      - 9300:9300
+
+  kibana:
+    container_name: demo-kibana
+    image: docker.elastic.co/kibana/kibana:8.6.2
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    ports:
+      - 5601:5601
+    depends_on:
+      - elasticsearch
+
+  # How to Tune Elastic Beats Performance: A Practical Example with Batch Size, Worker Count, and More
+  # https://www.elastic.co/blog/how-to-tune-elastic-beats-performance-a-practical-example-with-batch-size-worker-count-and-more?blade=tw&hulk=social
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:8.6.2
+    # https://github.com/docker/swarmkit/issues/1951
+    
+    container_name: demo-filebeat
+    # Need to override user so we can access the log files, and docker.sock
+    user: root
+    configs:
+      - source: fb_config
+        target: /usr/share/filebeat/filebeat.yml
+    volumes:
+      #- filebeat:/usr/share/filebeat/data
+      - /var/run/docker.sock:/var/run/docker.sock
+      # This is needed for filebeat to load container log path as specified in filebeat.yml
+      - /var/lib/docker/containers/:/var/lib/docker/containers/:ro
+      # This is needed for filebeat to load logs for system and auth modules
+      - /var/log/:/var/log/:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway" 
+    environment:
+      - ELASTICSEARCH_HOST=demo-es
+      - KIBANA_HOST=demo-kibana
+      #- ELASTICSEARCH_USERNAME=${ELASTICSEARCH_USERNAME:-elastic}
+      #- ELASTICSEARCH_PASSWORD=${ELASTICSEARCH_PASSWORD:-changeme}
+    # disable strict permission checks
+    command: ["--strict.perms=false"]
+    deploy:
+      mode: global
+
+  # Hearbeat configuration    
+  heartbeat:
+    image: docker.elastic.co/beats/heartbeat:8.6.2
+    # https://github.com/docker/swarmkit/issues/1951
+    
+    container_name: demo-heartbeat
+    # Need to override user so we can access the log files, and docker.sock
+    user: heartbeat
+    configs:
+      - source: hb_config
+        target: /usr/share/heartbeat/heartbeat.yml
+    volumes:
+      #- filebeat:/usr/share/filebeat/data
+      - /var/run/docker.sock:/var/run/docker.sock
+      # This is needed for filebeat to load container log path as specified in filebeat.yml
+      - /var/lib/docker/containers/:/var/lib/docker/containers/:ro
+      # This is needed for filebeat to load logs for system and auth modules
+      - /var/log/:/var/log/:ro
+    cap_add:
+      - NET_RAW
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      - ELASTICSEARCH_HOST=demo-es
+      - KIBANA_HOST=demo-kibana
+    # disable strict permission checks
+    command: ["--strict.perms=false"]
+    deploy:
+      mode: global
+  # metricbeat configuration    
+  metricbeat:
+    image: docker.elastic.co/beats/metricbeat:8.6.2
+    # https://github.com/docker/swarmkit/issues/1951
+    
+    container_name: demo-metricbeat
+    # Need to override user so we can access the log files, and docker.sock
+    user: root
+    configs:
+      - source: mb_config
+        target: /usr/share/metricbeat/metricbeat.yml
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      # This is needed for filebeat to load container log path as specified in filebeat.yml
+      - /var/lib/docker/containers/:/var/lib/docker/containers/:ro
+      - ./conf/metricbeat.docker.yml:/usr/share/metricbeat/metricbeat.yml:ro
+      # This is needed for filebeat to load logs for system and auth modules
+      - /var/log/:/var/log/:ro
+      - /sys/fs/cgroup:/hostfs/sys/fs/cgroup:ro
+      - /proc:/hostfs/proc:ro
+      #- /:/hostfs:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      - ELASTICSEARCH_HOST=demo-es
+      - KIBANA_HOST=demo-kibana
+    # disable strict permission checks
+    command: ["--strict.perms=false"]
+    deploy:
+      mode: global
+  # metricbeat configuration    
+  packetbeat:
+    image: docker.elastic.co/beats/packetbeat:8.6.2
+    # https://github.com/docker/swarmkit/issues/1951
+    
+    container_name: demo-packetbeat
+    # Need to override user so we can access the log files, and docker.sock
+    user: packetbeat
+    configs:
+      - source: pb_config
+        target: /usr/share/packetbeat/packetbeat.yml
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      # This is needed for filebeat to load container log path as specified in filebeat.yml
+      - /var/lib/docker/containers/:/var/lib/docker/containers/:ro
+      # This is needed for filebeat to load logs for system and auth modules
+      - /var/log/:/var/log/:ro
+    cap_add:
+      - NET_RAW
+      - NET_ADMIN
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      - ELASTICSEARCH_HOST=demo-es
+      - KIBANA_HOST=demo-kibana
+    # disable strict permission checks
+    command: ["--strict.perms=false"]
+    deploy:
+      mode: global
+  # redis service 
+  redis:
+    image: redis
+    restart: always
+    container_name: demo-redis
+    ports:
+      - '6380:6379'
+    command: redis-server
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes: 
+      - cache:/data
+  # Logstash
+  # docker run --name=logstash --net elastic -d -it -v $(pwd)/conf/pipelines/:/usr/share/logstash/pipeline/ docker.elastic.co/logstash/logstash:8.6.1
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.6.1
+    container_name: demo-logstash
+    volumes:
+      #- ./logstash/config/logstash.yml:/usr/share/logstash/config/logstash.yml:ro,Z
+      - ./conf/pipelines:/usr/share/logstash/pipeline:ro,Z
+    ports:
+      - 5044:5044
+      - 50000:50000/tcp
+      - 50000:50000/udp
+      - 9600:9600
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      LS_JAVA_OPTS: -Xms256m -Xmx256m
+    depends_on:
+      - elasticsearch
+    restart: unless-stopped
+
+# Volumes used by the services above
+volumes:
+  elasticsearch-data:
+    driver: local
+  cache:
+    driver: local
+configs:
+  pb_config:
+    file: ./conf/packetbeat.docker.yml
+  fb_config:
+    file: ./conf/filebeat.docker.yml
+  hb_config:
+    file: ./conf/heartbeat.docker.yml
+  mb_config:
+    file: ./conf/metricbeat.docker.yml

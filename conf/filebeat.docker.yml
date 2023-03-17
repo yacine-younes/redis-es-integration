@@ -13,9 +13,7 @@ filebeat.inputs:
 
 # ---------------------------- Redis Output ----------------------------
 output.redis:
-  hosts: ["redis-19004.c299.asia-northeast1-1.gce.cloud.redislabs.com:19004"]
-  user: "default"
-  password: "B9NelJhy35TDqihDp9YeUq1xl6srVYZB"
+  hosts: ["host.docker.internal:6380"]
   key: "filebeat"
   db: 0
   timeout: 5
